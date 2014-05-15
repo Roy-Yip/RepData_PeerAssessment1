@@ -1,0 +1,132 @@
+# load and preprocessing the data
+
+#### set my directory, url ect to download the data
+
+```{r}
+dir <- "D:/interest/coursera/Reproducible research/assignment1"
+setwd(dir)
+file.url <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+```
+
+#### download the data and unzip  
+- just ignor the error in the chunk, for some reason url in the code is not compatible to Rmd
+
+```{r,}
+download.file(url = file.url, "assignment1.zip")
+unzip("assignment1.zip")
+```
+
+#### read library for later analysis
+
+```{r,  message=FALSE, warning=FALSE}
+library(lubridate)
+library(plyr)
+library(ggplot2)
+```
+
+#### pre-process
+- read the data
+- transform the format
+- delete the observation with NA
+
+```{r}
+data <- read.csv("activity.csv")
+data$date <- ymd(as.character(data$date))
+```
+
+# What is mean total number of steps taken per day?
+
+#### a histogram of the total number of steps taken each day
+
+```{r}
+data.per.day <- ddply(data, .(date), summarise, 
+                      total.step = sum(steps, na.rm = T), 
+                      mean.step = mean(steps, na.rm = T),
+                      median.step = median(steps, na.rm = T))
+hist(data.per.day$total.step)
+```
+
+#### mean and median total number of steps taken per day
+
+```{r, results='hold'}
+data.per.day[, c(1, 3, 4)]
+```
+
+# What is the average daily activity pattern?
+
+####  time series plot on daily activity
+
+```{r}
+data.interval <- ddply(data, .(interval), summarise,
+                       mean.step = mean(steps, na.rm = T))
+with(data.interval, plot(interval, mean.step, type = "l"))
+```
+
+#### report the interval contain maxium number
+
+```{r}
+data.interval[which.max(data.interval$mean.step),]
+```
+
+# Imputing missing values
+
+#### report the total number of missing values
+
+```{r}
+data.full <- read.csv("activity.csv")
+number <- table(is.na(data.full$steps))["TRUE"]
+print(as.numeric(number))
+```
+
+#### fill the data by daily mean of interval
+#### create a new dataset with missing data fill in
+
+```{r}
+na.idx <- which(is.na(data.full$steps))
+data.full$date <- ymd(data.full$date)
+data.full[na.idx, ]$steps <- 
+  data.interval[match(data.full[na.idx, ]$interval, data.interval$interval), "mean.step"]
+```
+
+#### compute daily steps
+
+```{r}
+data.full.daily <- ddply(data.full, .(date), summarise, 
+                         mean.step = mean(steps), 
+                         median.step = median(steps))
+print(data.full.daily)
+```
+
+#### make a histograme and compare to previous one
+- based on this filling in, it seems that the full data "connect" the broken line
+- there is no big differece between the original and full data
+
+```{r}
+par(mfrow = c(2, 1))
+with(data.per.day, plot(date, mean.step, type = "l", col = "red"))
+with(data.full.daily, plot(date, mean.step, type = "l", col = "blue"))
+```
+
+# Are there differences in activity patterns between weekdays and weekends?
+
+#### check the differnce between weekdays and weekends
+
+```{r, fig.height = 8}
+data$weekday <- weekdays(data$date)
+data <- data[complete.cases(data),]
+data$weekday.category <- NA
+data$weekday.category <- ifelse(data$weekday %in% list("Sunday", "Saturday"), 
+                            "weekend", "weekday")
+data.weekday <- ddply(data, .(weekday.category, interval), summarise, 
+                      mean.step = mean(steps))
+
+```
+
+#### make as plot for comparison
+
+```{r}
+ggplot(data.weekday, aes(interval, mean.step, color = weekday.category)) +
+  geom_line() +
+  facet_grid(weekday.category ~.)
+```
+
