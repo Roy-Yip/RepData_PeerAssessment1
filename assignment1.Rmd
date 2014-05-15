@@ -93,18 +93,19 @@ data.full[na.idx, ]$steps <-
 ```{r}
 data.full.daily <- ddply(data.full, .(date), summarise, 
                          mean.step = mean(steps), 
-                         median.step = median(steps))
+                         median.step = median(steps), 
+                         total.step = sum(steps))
 print(data.full.daily)
 ```
 
 #### make a histograme and compare to previous one
-- based on this filling in, it seems that the full data "connect" the broken line
-- there is no big differece between the original and full data
+#### the distribution looks more "normal"
 
 ```{r}
-par(mfrow = c(2, 1))
-with(data.per.day, plot(date, mean.step, type = "l", col = "red"))
-with(data.full.daily, plot(date, mean.step, type = "l", col = "blue"))
+par(mfrow = c(1, 2))
+hist(data.full.daily$total.step, col = "red", main = "after adding missing data")
+hist(data.per.day$total.step, col = "blue", main = "original data")
+
 ```
 
 # Are there differences in activity patterns between weekdays and weekends?
